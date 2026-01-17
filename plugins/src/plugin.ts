@@ -399,6 +399,36 @@ async function checkForMention(message: DiscordMessage) {
   
   console.log(`[Discord Plugin] @${botInfo.username} mentioned by ${message.author.username}`);
   
+  // Log to OpenCode activity panel
+  if (openCodeContext?.client) {
+    await openCodeContext.client.app.log({
+      service: 'discord',
+      level: 'info',
+      message: `@${message.author.username} mentioned @Senter in #${message.channelName}: ${message.content.substring(0, 100)}`,
+      extra: {
+        channelId: message.channelId,
+        messageId: message.id,
+        author: message.author.username,
+        guild: message.guildName,
+        channel: message.channelName,
+      },
+    });
+  }
+  
+  // Try to show toast notification (TUI only)
+  if (openCodeContext?.tui) {
+    try {
+      openCodeContext.tui.toast.show({
+        message: `@Senter mentioned by ${message.author.username}`,
+        title: 'Discord',
+        duration: 5000,
+      });
+    } catch (error) {
+      // Toast might not be available in all interfaces
+      console.log('[Discord Plugin] Toast notification not available (tui.toast.show failed):', error);
+    }
+  }
+  
   // Send to OpenCode via mention handler
   await invokeMentionHandler(message);
 }
