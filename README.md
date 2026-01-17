@@ -1,9 +1,6 @@
 # AI Development Tools Collection
 
 A growing monorepo of tools for autonomous AI development, compatible with OpenCode, Senter, Claude Code, and Cursor.
-
-Transform rough ideas into working applications in 3-5 hours instead of weeks or months.
-
 ---
 
 ## 🎯 What's Included
