@@ -584,10 +584,34 @@ Meaning: Failure - Some tests did not pass
 4. **Track time** - Report execution duration
 
 ### After Execution:
+ 
+1. **Clean up terminals** - Always close opened terminals after testing
+2. **Remove temporary pipes** - Clean up named pipes and temporary files
+3. **Summarize results** - Provide clear success/failure report
+4. **Offer next steps** - Suggest actions based on results
 
-1. **Clean up** - Remove temporary pipes and files
-2. **Summarize results** - Provide clear success/failure report
-3. **Offer next steps** - Suggest actions based on results
+### Terminal Cleanup:
+ 
+**Always ensure cleanup after execution:**
+```python
+# Example cleanup function
+def cleanup_terminal(proc, pipe_path):
+    try:
+        # Terminate terminal process
+        proc.terminate()
+        proc.wait(timeout=5)
+    except:
+        proc.kill()
+    finally:
+        # Remove pipe
+        try:
+            os.remove(pipe_path)
+        except:
+            pass
+```
+
+**Important: Never leave terminals or pipes open after testing!**
+
 
 ## Important Reminders
 
