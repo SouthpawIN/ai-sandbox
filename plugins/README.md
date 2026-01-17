@@ -1,144 +1,89 @@
-# Discord Plugin for OpenCode
+# Discord Plugin
 
-Real-time Discord integration for OpenCode with natural language interaction.
+Discord integration plugin for ai-sandbox that enables real-time Discord interaction through chat tools.
 
----
+## Features
 
-## 🎯 Overview
+- **Secure Discord Authentication**: Token-based authentication with config file support
+- **Connection Management**: Automatic reconnection with exponential backoff, health monitoring, and error recovery
+- **Message Tools**: Send messages, retrieve messages, and interact with Discord channels
+- **Channel Discovery**: List and discover available Discord channels
+- **Reaction Support**: Add emoji reactions to Discord messages
+- **Rate Limiting**: Built-in rate limiting through discord.js
+- **Error Handling**: Comprehensive error detection and classification
 
-A Discord integration plugin for OpenCode that enables real-time message monitoring and interaction through chat tools.
-
-**Architecture:** This plugin implements Discord functionality as invocable tools rather than UI panels. This provides a more natural integration with OpenCode's existing workflow.
-
----
-
-## 🚀 Installation
-
-### From GitHub Repository
-
-Clone and run the install script:
+## Installation
 
 ```bash
-cd /home/sovthpaw/.opencode/agents/discord-plugin
+cd plugins
 npm install
 npm run build
 ```
 
----
+## Configuration
 
-## 💡 Usage
+Create a `config.json` file in the plugin directory:
 
-### Connect to Discord
-
-In an OpenCode session, type:
+```json
+{
+  "discordBotToken": "YOUR_DISCORD_BOT_TOKEN_HERE"
+}
 ```
-Connect to Discord with my bot token [YOUR_BOT_TOKEN]
+
+Or copy the example and fill in your token:
+
+```bash
+cp config.json.example config.json
+# Edit config.json with your bot token
 ```
 
-The plugin will authenticate and connect to Discord automatically.
+The plugin will automatically load the token and connect on startup.
 
-### Available Tools
+## Discord Bot Setup
 
-| Tool | Description | Usage Example |
-|-------|-------------|---------------|
-| `discord.send-message` | Send text messages to channels or DMs | "Send message to #general: Hello!" |
-| `discord.get-messages` | Retrieve message history from channels | "Show me last 10 messages from #random" |
-| `discord.get-channels` | List available channels and guilds | "Show me all my channels" |
-| `discord.get-status` | Check connection status and health | "Check Discord connection status" |
-| `discord.react` | Add emoji reactions to messages | "React with 👍 to the last message" |
-| `discord.search-messages` | Search Discord message content | "Search for 'bug' in messages" |
-
----
-
-## 🔒 Getting a Discord Bot Token
+To use this plugin, you need a Discord bot token:
 
 1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
 2. Create a new application
-3. Go to "Bot" section and create a bot
-4. Enable necessary intents:
+3. Go to the "Bot" section and create a bot
+4. Enable the necessary intents:
    - Message Content Intent
    - Server Members Intent
    - Presence Intent (optional)
-5. Copy bot token (72 characters, starts with `MTAw...`)
-6. Invite bot to your servers with required permissions
+5. Copy the bot token
+6. Invite the bot to your servers with required permissions
 
----
+## Available Tools
 
-## 🏗️ Architecture
+| Tool | Description | Usage |
+|-------|-------------|---------|
+| `discord.send-message` | Send text messages | "Send message to #general: Hello!" |
+| `discord.get-messages` | Get message history | "Show me last 10 messages" |
+| `discord.get-channels` | List channels | "Show me all channels" |
+| `discord.get-status` | Check connection | "Check Discord status" |
+| `discord.react` | Add reactions | "React with 👍 to last message" |
+| `discord.search-messages` | Search messages | "Search for 'bug'" |
 
-```
-discord-plugin/
-├── src/                        # TypeScript source code
-│   ├── client/                # Discord.js wrapper
-│   ├── storage/                # Token management
-│   ├── store/                  # Message and channel storage
-│   ├── tools/                  # Discord tool implementations
-│   ├── types/                  # TypeScript type definitions
-│   ├── utils/                  # Utilities (LRU cache, etc.)
-│   ├── plugin.ts               # Plugin entry point
-│   └── index.ts               # Main export
-├── dist/                       # Compiled JavaScript
-│   ├── *.js                   # Output files
-│   └── *.d.ts                 # TypeScript declarations
-├── package.json                # Package manifest
-└── tsconfig.json               # TypeScript configuration
-```
+## Development
 
----
-
-## 🔒 Security Features
-
-- **Token Storage** - Uses OpenCode's secure storage API
-- **Token Validation** - Validates Discord bot token format
-- **Rate Limiting** - Automatic handling of Discord API rate limits
-- **No Hardcoded Secrets** - No tokens or secrets in code
-
----
-
-## 📊 Features
-
-### Connection Management
-- **Auto-Reconnect** - Exponential backoff (1s → 30s max)
-- **Connection Health** - Ping Discord gateway every 30s
-- **Error Classification** - Network, auth, and rate limit errors
-- **Graceful Shutdown** - Proper cleanup on disconnect
-
-### Message Handling
-- **LRU Cache** - 1000 messages per channel limit
-- **Deduplication** - Prevent duplicate message IDs
-- **History Pagination** - Load older messages on scroll
-- **Search Across Channels** - Full-text search capability
-
----
-
-## 🛠️ Troubleshooting
-
-### Plugin Not Loading
+### Build
 
 ```bash
-# Check if plugin is built
-ls dist/
-
-# Check package.json exists
-cat package.json
+npm run build
 ```
 
-### Connection Issues
+### Type Check
 
 ```bash
-# Verify bot token format
-# Discord bot tokens are 72 characters: [A-Za-z0-9_-]{59}
-
-# Verify bot is in servers
-# Make sure bot has proper intents enabled
+npm run typecheck
 ```
 
----
+### Watch Mode
 
-## 📄 License
+```bash
+npm run dev
+```
 
-MIT License
+## License
 
----
-
-**Part of the [AI Development Tools Collection](../README.md)**
+MIT

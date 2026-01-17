@@ -119,9 +119,36 @@ export const discordGetChannels: ToolDefinition = tool({
     }
 
     try {
-      // This would need access to the message store
-      // For now, return a placeholder response
-      return 'Discord channels listing would be available after full implementation';
+      const discordJsClient = (client as any).client;
+
+      if (!discordJsClient) {
+        return 'Error: Discord.js client not available';
+      }
+
+      const channels: string[] = [];
+
+      if (args.guildId) {
+        const guild = discordJsClient.guilds.cache.get(args.guildId);
+        if (guild) {
+          guild.channels.cache.forEach((channel: any) => {
+            const type = channel.type === 0 ? 'Text' : channel.type === 2 ? 'Voice' : channel.type === 1 ? 'DM' : channel.type === 3 ? 'Group DM' : 'Other';
+            channels.push(`[${channel.id}] ${type}: ${channel.name || 'Unnamed'} (Guild: ${guild.name})`);
+          });
+        }
+      } else {
+        discordJsClient.channels.cache.forEach((channel: any) => {
+          const type = channel.type === 0 ? 'Text' : channel.type === 2 ? 'Voice' : channel.type === 1 ? 'DM' : channel.type === 3 ? 'Group DM' : 'Other';
+          const guild = channel.guild;
+          const guildName = guild ? guild.name : 'DM/Group';
+          channels.push(`[${channel.id}] ${type}: ${channel.name || 'Unnamed'} (Guild: ${guildName})`);
+        });
+      }
+
+      if (channels.length === 0) {
+        return 'No channels found';
+      }
+
+      return `Available channels:\n\n${channels.join('\n')}`;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return `Error getting channels: ${errorMessage}`;

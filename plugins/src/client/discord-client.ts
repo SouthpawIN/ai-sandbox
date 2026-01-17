@@ -6,13 +6,13 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import type { DiscordEvent, ConnectionStatus, ConnectionError, DiscordMessage } from '../types/discord.js';
 
 // Discord bot token format validation
-const DISCORD_TOKEN_REGEX = /^M[A-Za-z\d]{23}\.[\w-]{6}\.[\w-]{27}$/;
+const DISCORD_TOKEN_REGEX = /^M[A-Za-z\d]{23,}\.([\w-]{6})\.([\w-]{27,})$/;
 
 /**
  * Discord client wrapper class
  */
 export class DiscordClientWrapper {
-  private client: Client | null = null;
+  private discordClient: Client | null = null;
   private token: string | null = null;
   private status: ConnectionStatus = 'disconnected';
   private lastError: ConnectionError | null = null;
@@ -35,6 +35,13 @@ export class DiscordClientWrapper {
    */
   getLastError(): ConnectionError | null {
     return this.lastError;
+  }
+
+  /**
+   * Get the Discord.js client instance
+   */
+  get client(): Client | null {
+    return this.discordClient;
   }
 
   /**
@@ -61,7 +68,7 @@ export class DiscordClientWrapper {
     }
 
     // Disconnect existing client if any
-    if (this.client) {
+    if (this.discordClient) {
       await this.disconnect();
     }
 
@@ -72,7 +79,7 @@ export class DiscordClientWrapper {
 
     try {
       // Create Discord client with necessary intents
-      this.client = new Client({
+      this.discordClient = new Client({
         intents: [
           GatewayIntentBits.Guilds,
           GatewayIntentBits.GuildMessages,
@@ -85,7 +92,7 @@ export class DiscordClientWrapper {
       this.setupEventHandlers();
 
       // Login to Discord
-      await this.client.login(token);
+      await this.discordClient.login(token);
 
       // Reset reconnect attempts on successful connection
       this.reconnectAttempts = 0;
@@ -109,13 +116,13 @@ export class DiscordClientWrapper {
     }
 
     // Disconnect client if connected
-    if (this.client) {
+    if (this.discordClient) {
       try {
-        this.client.destroy();
+        this.discordClient.destroy();
       } catch (error) {
         console.error('Error destroying Discord client:', error);
       }
-      this.client = null;
+      this.discordClient = null;
     }
 
     this.status = 'disconnected';
@@ -166,19 +173,19 @@ export class DiscordClientWrapper {
    * Set up Discord.js event handlers
    */
   private setupEventHandlers(): void {
-    if (!this.client) return;
+    if (!this.discordClient) return;
 
     // Ready event
-    this.client.once('ready', () => {
+    this.discordClient.once('ready', () => {
       this.status = 'connected';
       this.lastError = null;
       this.reconnectAttempts = 0;
       this.emitEvent({ type: 'ready' });
-      console.log(`Discord client connected as ${this.client!.user?.tag}`);
+      console.log(`Discord client connected as ${this.discordClient!.user?.tag}`);
     });
 
     // Message create event
-    this.client.on('messageCreate', (message) => {
+    this.discordClient.on('messageCreate', (message) => {
       // Ignore messages from bots
       if (message.author.bot) return;
 
@@ -194,7 +201,7 @@ export class DiscordClientWrapper {
     });
 
     // Message update event
-    this.client.on('messageUpdate', (oldMessage, newMessage) => {
+    this.discordClient.on('messageUpdate', (oldMessage, newMessage) => {
       // Ignore messages from bots
       if (newMessage.author?.bot) return;
 
@@ -207,7 +214,7 @@ export class DiscordClientWrapper {
     });
 
     // Message delete event
-    this.client.on('messageDelete', (message) => {
+    this.discordClient.on('messageDelete', (message) => {
       this.messageCache.delete(message.id);
       this.emitEvent({
         type: 'messageDelete',
@@ -217,7 +224,7 @@ export class DiscordClientWrapper {
     });
 
     // Error event
-    this.client.on('error', (error) => {
+    this.discordClient.on('error', (error) => {
       const discordError = this.classifyError(error);
       this.setError(discordError);
 
@@ -228,7 +235,7 @@ export class DiscordClientWrapper {
     });
 
     // Disconnection event
-    this.client.on('disconnect', () => {
+    this.discordClient.on('disconnect', () => {
       this.status = 'disconnected';
       this.emitEvent({ type: 'disconnect', reason: 'Disconnected from Discord gateway' });
 
@@ -239,7 +246,7 @@ export class DiscordClientWrapper {
     });
 
     // Rate limit event
-    this.client.on('rateLimit', (rateLimitInfo) => {
+    this.discordClient.on('rateLimit', (rateLimitInfo) => {
       const error: ConnectionError = {
         type: 'rate_limit',
         message: `Rate limited for ${rateLimitInfo.timeout}ms on route ${rateLimitInfo.route}`,
@@ -426,6 +433,6 @@ export class DiscordClientWrapper {
    * Check if client is ready
    */
   isReady(): boolean {
-    return this.status === 'connected' && this.client?.isReady() || false;
+    return this.status === 'connected' && this.discordClient?.isReady() || false;
   }
 }

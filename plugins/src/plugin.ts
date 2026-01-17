@@ -19,6 +19,9 @@ import {
   discordReact,
   discordSearchMessages,
 } from './tools/discord-tools.js';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 // Global Discord client instance
 let discordClient: DiscordClientWrapper | null = null;
@@ -33,10 +36,38 @@ let connectionState = {
 };
 
 /**
+ * Load token from config.json file
+ */
+function loadTokenFromConfig(): string | null {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const configPath = join(__dirname, '..', 'config.json');
+    const configData = readFileSync(configPath, 'utf-8');
+    const config = JSON.parse(configData);
+    
+    if (config.discordBotToken && typeof config.discordBotToken === 'string') {
+      console.log('[Discord Plugin] Loaded token from config.json');
+      return config.discordBotToken;
+    }
+  } catch (error) {
+    console.log('[Discord Plugin] No config.json found or invalid, will use auth flow');
+  }
+  return null;
+}
+
+/**
  * Discord plugin for OpenCode
  */
 export const DiscordPlugin: Plugin = async (ctx) => {
   console.log('[Discord Plugin] Initializing...');
+
+  // Try to load token from config.json first
+  const configToken = loadTokenFromConfig();
+  if (configToken) {
+    connectionState.token = configToken;
+    connectionState.rememberToken = true;
+  }
 
   // Initialize Discord client
   discordClient = new DiscordClientWrapper();
@@ -50,6 +81,16 @@ export const DiscordPlugin: Plugin = async (ctx) => {
     reconnectDelayMax: 30000,
     enableHealthChecks: true,
   });
+
+  // Auto-connect if we have a token from config
+  if (configToken) {
+    console.log('[Discord Plugin] Auto-connecting with token from config.json');
+    try {
+      await connectionManager.connect(configToken);
+    } catch (error) {
+      console.error('[Discord Plugin] Auto-connect failed:', error);
+    }
+  }
 
   // Set up Discord client event handler to update state
   discordClient.on((event: DiscordEvent) => {
@@ -130,7 +171,7 @@ export const DiscordPlugin: Plugin = async (ctx) => {
               type: 'text',
               key: 'remember',
               message: 'Remember this token? (yes/no)',
-              comment: 'yes',
+              placeholder: 'yes',
               condition: (inputs) => {
                 // Only show if token is valid
                 const token = inputs?.token;
