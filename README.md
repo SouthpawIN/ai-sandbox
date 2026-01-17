@@ -20,9 +20,13 @@ Supporting tools and automation scripts:
 - **SAGA Protocol** - Structured planning template
 - **Installation Scripts** - One-click setup
 
-### [Plugins](./plugins/README.md)
+ ### [Plugins](./plugins/README.md)
 OpenCode plugins for extended functionality:
 - **Discord Plugin** - Real-time Discord monitoring and interaction
+
+### [Skills](./skills/README.md)
+OpenCode and Senter skills for extended functionality:
+- **Terminal Launcher** - Open and monitor terminal sessions in real-time
 
 ---
 
@@ -47,6 +51,7 @@ chmod +x install.sh
 | Agents | ✅ | ✅ | ✅ | ✅ |
 | Scripts | ✅ | ✅ | ✅ | ✅ |
 | Plugins | ✅ | ❓ | ❓ | ❓ |
+| Skills | ✅ | ✅ | ❓ | ❓ |
 
 ---
 
@@ -62,7 +67,10 @@ ai-sandbox/
 │   ├── SAGA_PROTOCOL.md # Planning template
 │   ├── ralph_loop.sh    # Autonomous development loop
 │   ├── setup-ralph.sh  # Ralph setup
+│   ├── terminal-tools/   # Terminal management tools
 │   └── install-*.sh     # Installation scripts
+├── skills/              # OpenCode and Senter skills
+│   └── terminal-launcher.md # Terminal session management
 ├── plugins/             # OpenCode plugins
 │   └── discord-plugin/  # Discord integration
 │       ├── src/         # TypeScript source
@@ -75,6 +83,12 @@ ai-sandbox/
 ---
 
 ## 🎓 Version History
+
+### v2.1 (January 17, 2026)
+- ✨ Added Terminal Launcher skill for real-time terminal monitoring
+- 📂 Added skills directory for OpenCode and Senter extensions
+- 🔧 Created terminal-tools scripts for alacritty and gnome-terminal
+- 📝 Updated README with skills section
 
 ### v2.0 (January 17, 2026)
 - ✨ Added Discord Plugin for OpenCode
