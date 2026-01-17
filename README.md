@@ -92,17 +92,16 @@ ai-sandbox/
 
 ---
 
-## 🎓 Version History
+ ## 🎓 Version History
+
+### v4.0 (January 17, 2026)
+- ✨ Added agents/README.md with comprehensive agent documentation
+- ✨ Documented all 4 agents (SAGA-Writer, Ralph, Code Reviewer, Terminal Tester)
+- ✨ Added agent workflows and integration patterns
+- ✨ Compatibility matrix for all agents
+- 📝 Complete agent ecosystem documentation
 
 ### v3.0 (January 17, 2026)
-- ✨ Added Code Reviewer agent for automated code reviews
-- ✨ Added Terminal Tester agent for script execution
-- ✨ Added SAGA Automation skill for workflow automation
-- 🔧 Integration between Code Reviewer and Terminal Tester
-- 📝 Code reviews now generate LLM-friendly prompts
-- 🧪 Automated testing in SAGA workflow
-
-### v2.1 (January 17, 2026)
 - ✨ Added Terminal Launcher skill for real-time terminal monitoring
 - 📂 Added skills directory for OpenCode and Senter extensions
 - 🔧 Created terminal-tools scripts for alacritty and gnome-terminal

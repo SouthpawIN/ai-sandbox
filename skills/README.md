@@ -119,6 +119,72 @@ senter @terminal-tester --script /path/to/script.sh
 - `alacritty` or `gnome-terminal`
 - X11/Wayland display
 
+### Code Reviewer
+
+**File**: `code-reviewer.md`
+
+**Purpose**: Perform comprehensive code reviews with automated testing and LLM-friendly prompt generation.
+
+**Features**:
+- ✅ Analyzes code for correctness, quality, performance, security
+- ✅ Runs tests automatically via Terminal Tester
+- ✅ Generates LLM-friendly review prompts
+- ✅ Produces structured reports (Critical > Major > Minor > Suggestions)
+- ✅ Classifies issues by severity
+
+**Usage**:
+```bash
+# Review a file
+senter @code-reviewer --file src/utils.py
+
+# Review with full test suite
+senter @code-reviewer --file src/utils.py --full-test
+
+# Generate LLM prompt only
+senter @code-reviewer --file src/utils.py --prompt-only
+```
+
+**Requirements**:
+- `senter` or `opencode`
+- Terminal Tester agent (for automated testing)
+
+### Terminal Tester
+
+**File**: `terminal-tester.md`
+
+**Purpose**: Execute scripts and commands in isolated GUI terminals with output capture and reporting.
+
+**Features**:
+- ✅ Opens GUI terminals (alacritty or gnome-terminal)
+- ✅ Executes scripts/commands in isolated environments
+- ✅ Captures output in real-time via named pipes
+- ✅ Reports success/failure with detailed output
+- ✅ Supports multiple execution modes (test, verify, benchmark)
+- ✅ JSON output for automation
+
+**Usage**:
+```bash
+# Execute a command
+senter @terminal-tester --command "pytest -v"
+
+# Execute a script
+senter @terminal-tester --script /path/to/test.sh
+
+# Run tests in isolated terminal
+senter @terminal-tester --test
+
+# Verify functionality
+senter @terminal-tester --verify
+
+# Benchmark performance
+senter @terminal-tester --benchmark
+```
+
+**Requirements**:
+- `python3`
+- `alacritty` or `gnome-terminal`
+- X11/Wayland display
+
 ## Adding New Skills
 
 ### Skill Structure
