@@ -1,3 +1,4 @@
 {
-  "discordBotToken": "YOUR_DISCORD_BOT_TOKEN_HERE"
+  "discordBotToken": "YOUR_DISCORD_BOT_TOKEN_HERE",
+  "ownerUsername": "YOUR_DISCORD_USERNAME"
 }

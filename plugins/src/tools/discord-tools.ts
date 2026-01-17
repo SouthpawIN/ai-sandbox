@@ -3,8 +3,25 @@
  */
 
 import { tool, type ToolDefinition } from '@opencode-ai/plugin/tool';
-import { getDiscordClient } from '../plugin.js';
+import { getDiscordClient, getDiscordClient as getDiscordClientInstance } from '../plugin.js';
 import type { DiscordMessage, DiscordChannel, DiscordGuild } from '../types/discord.js';
+
+// Global callback for handling @Senter mentions
+let mentionHandler: ((message: DiscordMessage) => Promise<void>) | null = null;
+
+export function setMentionHandler(handler: (message: DiscordMessage) => Promise<void>) {
+  mentionHandler = handler;
+}
+
+export function getMentionHandler() {
+  return mentionHandler;
+}
+
+export async function invokeMentionHandler(message: DiscordMessage) {
+  if (mentionHandler) {
+    await mentionHandler(message);
+  }
+}
 
 /**
  * Send message to Discord channel or DM
@@ -270,12 +287,234 @@ export const discordSearchMessages: ToolDefinition = tool({
     const limit = Math.min(args.limit || 20, 100);
 
     try {
-      // This would need access to the message store
-      // For now, return a placeholder
-      return `Searching for "${args.query}" in Discord messages... (Full search implementation pending)`;
+      const discordJsClient = (client as any).client;
+
+      if (!discordJsClient) {
+        return 'Error: Discord.js client not available';
+      }
+
+      const results: string[] = [];
+      let count = 0;
+
+      for (const [_, channel] of discordJsClient.channels.cache) {
+        if (!channel.isTextBased()) continue;
+
+        try {
+          const messages = await channel.messages.fetch({ limit: 50 });
+          for (const [_, message] of messages) {
+            if (message.content.toLowerCase().includes(args.query.toLowerCase()) && !message.author.bot) {
+              const timestamp = message.createdAt.toLocaleString();
+              results.push(`[${timestamp}] ${message.author.username} in #${channel.name}: ${message.content.substring(0, 100)}`);
+              count++;
+              if (count >= limit) break;
+            }
+          }
+        } catch (e) {
+          // Skip channels we can't read
+        }
+        if (count >= limit) break;
+      }
+
+      if (results.length === 0) {
+        return `No results found for "${args.query}"`;
+      }
+
+      return `Search results for "${args.query}":\n\n${results.join('\n')}`;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return `Error searching messages: ${errorMessage}`;
+    }
+  },
+});
+
+/**
+ * Create a Discord channel
+ */
+export const discordCreateChannel: ToolDefinition = tool({
+  description: 'Create a new text channel in a Discord server.',
+  args: {
+    guildId: tool.schema.string().describe('Discord server (guild) ID'),
+    name: tool.schema.string().describe('Channel name'),
+    category: tool.schema.string().optional().describe('Parent category ID (optional)'),
+  },
+  async execute(args, context) {
+    const client = getDiscordClient();
+
+    if (!client) {
+      return 'Error: Discord client not initialized';
+    }
+
+    if (!client.isReady()) {
+      return 'Error: Discord client is not connected';
+    }
+
+    try {
+      const discordJsClient = (client as any).client;
+
+      if (!discordJsClient) {
+        return 'Error: Discord.js client not available';
+      }
+
+      const guild = discordJsClient.guilds.cache.get(args.guildId);
+
+      if (!guild) {
+        return `Error: Guild ${args.guildId} not found`;
+      }
+
+      const channelOptions: any = {
+        name: args.name,
+        type: 0, // Text channel
+      };
+
+      if (args.category) {
+        channelOptions.parent = args.category;
+      }
+
+      const channel = await guild.channels.create(channelOptions);
+
+      return `Created channel #${channel.name} (${channel.id}) in guild ${guild.name}`;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return `Error creating channel: ${errorMessage}`;
+    }
+  },
+});
+
+/**
+ * Update a Discord channel
+ */
+export const discordUpdateChannel: ToolDefinition = tool({
+  description: 'Update a Discord channel (name, topic, etc.).',
+  args: {
+    channelId: tool.schema.string().describe('Discord channel ID'),
+    name: tool.schema.string().optional().describe('New channel name'),
+    topic: tool.schema.string().optional().describe('New channel topic'),
+    category: tool.schema.string().optional().describe('New parent category ID'),
+  },
+  async execute(args, context) {
+    const client = getDiscordClient();
+
+    if (!client) {
+      return 'Error: Discord client not initialized';
+    }
+
+    if (!client.isReady()) {
+      return 'Error: Discord client is not connected';
+    }
+
+    try {
+      const discordJsClient = (client as any).client;
+
+      if (!discordJsClient) {
+        return 'Error: Discord.js client not available';
+      }
+
+      const channel = await discordJsClient.channels.fetch(args.channelId);
+
+      if (!channel) {
+        return `Error: Channel ${args.channelId} not found`;
+      }
+
+      const updateOptions: any = {};
+
+      if (args.name) updateOptions.name = args.name;
+      if (args.topic) updateOptions.topic = args.topic;
+      if (args.category) updateOptions.parent = args.category;
+
+      await channel.edit(updateOptions);
+
+      return `Updated channel ${args.channelId}`;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return `Error updating channel: ${errorMessage}`;
+    }
+  },
+});
+
+/**
+ * Delete a Discord channel
+ */
+export const discordDeleteChannel: ToolDefinition = tool({
+  description: 'Delete a Discord channel.',
+  args: {
+    channelId: tool.schema.string().describe('Discord channel ID'),
+  },
+  async execute(args, context) {
+    const client = getDiscordClient();
+
+    if (!client) {
+      return 'Error: Discord client not initialized';
+    }
+
+    if (!client.isReady()) {
+      return 'Error: Discord client is not connected';
+    }
+
+    try {
+      const discordJsClient = (client as any).client;
+
+      if (!discordJsClient) {
+        return 'Error: Discord.js client not available';
+      }
+
+      const channel = await discordJsClient.channels.fetch(args.channelId);
+
+      if (!channel) {
+        return `Error: Channel ${args.channelId} not found`;
+      }
+
+      await channel.delete();
+
+      return `Deleted channel ${args.channelId}`;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return `Error deleting channel: ${errorMessage}`;
+    }
+  },
+});
+
+/**
+ * Create a Discord category
+ */
+export const discordCreateCategory: ToolDefinition = tool({
+  description: 'Create a new category in a Discord server.',
+  args: {
+    guildId: tool.schema.string().describe('Discord server (guild) ID'),
+    name: tool.schema.string().describe('Category name'),
+  },
+  async execute(args, context) {
+    const client = getDiscordClient();
+
+    if (!client) {
+      return 'Error: Discord client not initialized';
+    }
+
+    if (!client.isReady()) {
+      return 'Error: Discord client is not connected';
+    }
+
+    try {
+      const discordJsClient = (client as any).client;
+
+      if (!discordJsClient) {
+        return 'Error: Discord.js client not available';
+      }
+
+      const guild = discordJsClient.guilds.cache.get(args.guildId);
+
+      if (!guild) {
+        return `Error: Guild ${args.guildId} not found`;
+      }
+
+      const category = await guild.channels.create({
+        name: args.name,
+        type: 4, // Category
+      });
+
+      return `Created category ${category.name} (${category.id}) in guild ${guild.name}`;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return `Error creating category: ${errorMessage}`;
     }
   },
 });
