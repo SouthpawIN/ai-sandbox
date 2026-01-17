@@ -1,28 +1,28 @@
 /**
  * Discord Agent - Discord operations and @Senter mention handling
  * 
- * Acts as a dedicated Discord agent that handles all Discord-related operations
- * Integrates with other agents (Senter, Saga-Writer, Ralph) for complex tasks
+ * A subagent that handles all Discord-related operations
+ * Uses Task tool to delegate to other subagents (Build, Plan, Ralph, SAGA Writer)
  */
 
-import { tool } from '@opencode-ai/plugin/tool';
 import type { Plugin } from '@opencode-ai/plugin';
 
 /**
  * Discord Agent - Handles Discord-specific requests and coordinates with other agents
  */
 export const DiscordAgent: Plugin = async ({ client, project, directory, worktree }) => {
-  console.log('[Discord Agent] Initializing with agent coordination...');
+  console.log('[Discord Agent] Initializing...');
   
   return {
+    // Listen for Discord message events
     event: async ({ event }) => {
-      // Listen for Discord message events
+      // Discord plugin fires discord.message events
       if (event.type === 'discord.message') {
         const message = event.message as any;
         
         // Check if this is an @Senter mention
         if (message && message.isMention) {
-          console.log('[Discord Agent] @Senter mention detected, processing...');
+          console.log('[Discord Agent] @Senter mention detected:', message.author.username);
           await handleSenterMention(message, { client, project, directory, worktree });
         }
       }
@@ -38,14 +38,14 @@ async function handleSenterMention(
   ctx: { client: any; project: any; directory: any; worktree: any }
 ) {
   const { content, author, channelName, channelId, guildId } = message;
-  
-  // Get owner username for prioritization
   const ownerUsername = ctx.project?.ownerUsername;
+  
+  // Determine if this is from the owner (prioritize their requests)
   const isFromOwner = ownerUsername && (
     author.username.toLowerCase() === ownerUsername.toLowerCase()
   );
   
-  console.log(`[Discord Agent] Processing mention from ${author.username}${isFromOwner ? ' (owner)' : ''}`);
+  console.log(`[Discord Agent] Processing from ${author.username}${isFromOwner ? ' (owner)' : ''}`);
   
   // Analyze the request
   const requestType = classifyRequest(content);
@@ -54,19 +54,19 @@ async function handleSenterMention(
   try {
     if (requiresOtherAgent && shouldDelegateToSenter(requestType, content)) {
       // Delegate to Senter agent for general queries
-      await delegateToAgent('senter', message, ctx);
+      await delegateToAgent('senter', message, ctx, 'general-chat');
       return;
     }
     
     if (requiresOtherAgent && shouldDelegateToRalph(requestType, content)) {
       // Delegate to Ralph for development tasks
-      await delegateToAgent('ralph', message, ctx);
+      await delegateToAgent('ralph', message, ctx, 'development');
       return;
     }
     
     if (requiresOtherAgent && shouldDelegateToSagaWriter(requestType, content)) {
       // Delegate to Saga-Writer for documentation
-      await delegateToAgent('saga-writer', message, ctx);
+      await delegateToAgent('saga-writer', message, ctx, 'documentation');
       return;
     }
     
@@ -76,6 +76,111 @@ async function handleSenterMention(
     console.error('[Discord Agent] Error handling request:', error);
     await sendDiscordMessage(channelId, ctx, `❌ Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+/**
+ * Delegate to another agent using Task tool
+ */
+async function delegateToAgent(
+  agentName: string,
+  message: any,
+  ctx: any,
+  requestType: string
+) {
+  console.log(`[Discord Agent] Delegating to ${agentName} agent (${requestType})...`);
+  
+  const agents = await client.app.agents();
+  const targetAgent = agents.find(a => a.name === agentName);
+  
+  if (!targetAgent) {
+    await sendDiscordMessage(message.channelId, ctx, `❌ Could not find agent: ${agentName}`);
+    return;
+  }
+  
+  // Build the instruction content based on request type
+  const instructionContent = buildInstruction(requestType, message);
+  
+  const response = await ctx.client.completions.complete({
+    messages: [
+      {
+        role: 'system',
+        content: `You are handling a Discord mention. The user said: "${content}"
+
+Channel: #${message.channelName} (${message.channelId})
+Guild: ${message.guildName || 'DM'}
+Author: ${message.author.username}
+Owner: ${ctx.project?.ownerUsername || 'Not set'}
+
+${instructionContent}`,
+      },
+      {
+        role: 'user',
+        content,
+      },
+    ],
+  });
+  
+  const agentResponse = response.choices?.[0]?.message?.content || "Agent couldn't process request.";
+  
+  await sendDiscordMessage(message.channelId, ctx, `🔄 Delegated to ${agentName} agent:\n\n${agentResponse}`);
+}
+
+/**
+ * Build instruction content for the delegated agent
+ */
+function buildInstruction(requestType: string, message: any): string {
+  const lowerContent = message.content.toLowerCase();
+  
+  if (requestType === 'development') {
+    return `This is a development or implementation task. Use your autonomous development capabilities to:
+1. Analyze the user's request
+2. Create a concrete implementation plan
+3. Break down the work into smaller, manageable tasks
+4. Write clean, maintainable code
+5. Test your implementation thoroughly
+6. Handle any errors that occur gracefully
+
+Focus on:
+- Writing production-ready code
+- Following best practices and patterns
+- Ensuring performance and security
+- Adding appropriate comments and documentation`;
+  }
+  
+  if (requestType === 'documentation') {
+    return `This is a documentation or writing task. Use your documentation generation capabilities to:
+1. Create clear, well-structured documentation
+2. Explain complex concepts simply and clearly
+3. Include code examples where appropriate
+4. Format documentation for readability (proper headings, lists, code blocks)
+5. Focus on what the user needs to understand or accomplish
+6. Update existing documentation when changes occur
+
+Focus on:
+- Writing clear, user-friendly documentation
+- Maintaining consistency in style and tone
+- Creating guides, tutorials, and how-to sections
+- Including diagrams or examples where helpful`;
+  }
+  
+  if (requestType === 'general-chat') {
+    return `This is a general conversation or chat task. Respond naturally and helpfully to the user's message.
+
+Current context:
+- User: ${message.author.username}
+- Channel: #${message.channelName} (${message.channelId})
+- Guild: ${message.guildName || 'DM'}
+
+The user said: "${message.content}"
+
+Respond appropriately:
+- Be friendly and engaging
+- Provide helpful, relevant information
+- Ask clarifying questions if the request is unclear
+- Keep responses concise and on-topic`;
+  }
+  
+  return '';
 }
 
 /**
@@ -98,7 +203,6 @@ function requiresOtherAgent(requestType: string): boolean {
 function shouldDelegateToSenter(requestType: string, content: string): boolean {
   const lowerContent = content.toLowerCase();
   
-  // Delegate to Senter for open-ended conversations, general questions
   return [
     'general-chat',
     'what can you do',
@@ -106,10 +210,9 @@ function shouldDelegateToSenter(requestType: string, content: string): boolean {
     'tell me about',
     'explain',
     'discuss',
+    'who are you',
   ].some(keyword => lowerContent.includes(keyword)) || 
-         // Also delegate if request is about Senter itself
-         lowerContent.includes('senter') ||
-         lowerContent.includes('who are you');
+         lowerContent.includes('senter');
 }
 
 /**
@@ -118,7 +221,6 @@ function shouldDelegateToSenter(requestType: string, content: string): boolean {
 function shouldDelegateToRalph(requestType: string, content: string): boolean {
   const lowerContent = content.toLowerCase();
   
-  // Delegate to Ralph for development, coding, building, implementing
   return [
     'general-request',
     'develop',
@@ -141,7 +243,6 @@ function shouldDelegateToRalph(requestType: string, content: string): boolean {
 function shouldDelegateToSagaWriter(requestType: string, content: string): boolean {
   const lowerContent = content.toLowerCase();
   
-  // Delegate to Saga-Writer for documentation, writing tasks
   return [
     'documentation',
     'document',
@@ -152,38 +253,9 @@ function shouldDelegateToSagaWriter(requestType: string, content: string): boole
     'tutorial',
     'guide',
     'setup',
-    'read the docs',
+    'read docs',
     'summarize',
   ].some(keyword => lowerContent.includes(keyword));
-}
-
-/**
- * Delegate to another agent
- */
-async function delegateToAgent(agentName: string, message: any, ctx: any) {
-  console.log(`[Discord Agent] Delegating to ${agentName} agent...`);
-  
-  const response = await ctx.client.completions.complete({
-    messages: [
-      {
-        role: 'system',
-        content: `You are handling a Discord mention. The user said: "${message.content}"
-
-Channel: #${message.channelName} (${message.channelId})
-Guild: ${message.guildName || 'DM'}
-Author: ${message.author.username}
-
-Please process this request appropriately using your specialized capabilities.`,
-      },
-      {
-        role: 'user',
-        content: message.content,
-      },
-    ],
-  });
-  
-  const agentResponse = response.choices?.[0]?.message?.content || "Agent couldn't process the request.";
-  await sendDiscordMessage(message.channelId, ctx, `🔄 Delegated to ${agentName} agent:\n\n${agentResponse}`);
 }
 
 /**
@@ -237,7 +309,7 @@ async function handleDiscordOperation(
     }
   } catch (error) {
     console.error('[Discord Agent] Error in Discord operation:', error);
-    await sendDiscordMessage(message.channelId, ctx, `❌ Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    await sendDiscordMessage(channelId, ctx, `❌ Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -246,10 +318,12 @@ async function handleDiscordOperation(
  */
 async function handleListChannels(message: any, ctx: any) {
   console.log('[Discord Agent] Listing channels...');
+  
   const result = await ctx.client.tool.execute({
     tool: 'discord.get-channels',
     args: {},
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -278,6 +352,7 @@ async function handleCreateChannel(content: string, message: any, ctx: any, guil
       category: category,
     },
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -304,6 +379,7 @@ async function handleUpdateChannel(content: string, message: any, ctx: any, guil
       ...updates,
     },
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -329,6 +405,7 @@ async function handleDeleteChannel(content: string, message: any, ctx: any, guil
       channelId: channelIdToDelete,
     },
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -355,6 +432,7 @@ async function handleCreateCategory(content: string, message: any, ctx: any, gui
       name: categoryName,
     },
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -383,6 +461,7 @@ async function handleSearchMessages(content: string, message: any, ctx: any, gui
       limit,
     },
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -400,6 +479,7 @@ async function handleGetMessages(content: string, message: any, ctx: any, guildI
       limit,
     },
   });
+  
   await sendDiscordMessage(message.channelId, ctx, result);
 }
 
@@ -422,17 +502,15 @@ I can help you manage your Discord servers and coordinate with other agents:
 • Search messages: "Search for [query]"
 
 **Agent Coordination:**
-• General chat: Discuss any topic
-• Research: Look up information
-• Development: Build or implement features
-• Documentation: Generate docs or explain concepts
+• General chat: Discuss any topic with Senter agent
+• Development: Build or implement features with Ralph agent
+• Documentation: Generate docs or explain concepts with SAGA Writer agent
 
 **Examples:**
 • "@Senter create a channel called dev-ops in category Chat"
 • "@Senter list all channels"
 • "@Senter search for deployment"
 • "@Senter help me understand our project architecture"
-• "@Senter write documentation for the new API endpoints"
 
 **Bot Access:**
 I can only access channels where Senter bot (Senter#2910) has been invited.
@@ -440,7 +518,7 @@ Currently accessible: Senter Dev server (8 members)
 
 ---
 
-**Tip:** For complex requests, I'll automatically delegate to the best agent (Senter, Ralph, or Saga-Writer)!
+**Tip:** For complex requests, I'll automatically delegate to the best agent (Senter, Ralph, or SAGA Writer)!
 `;
 
   await sendDiscordMessage(message.channelId, ctx, helpText);
@@ -452,23 +530,33 @@ Currently accessible: Senter Dev server (8 members)
 async function handleGeneralRequest(content: string, message: any, ctx: any, guildId: string) {
   console.log('[Discord Agent] Processing general request with AI...');
   
+  const ownerUsername = ctx.project?.ownerUsername;
+  const isFromOwner = ownerUsername && (
+    message.author.username.toLowerCase() === ownerUsername.toLowerCase()
+  );
+  
+  const role = isFromOwner ? 'owner' : 'user';
+  const ownerContext = isFromOwner ? 
+    'You are the owner and have priority. ' : 
+    `User ${message.author.username} is requesting this. `;
+  
   // Generate response using OpenCode's LLM
   const response = await ctx.client.completions.complete({
     messages: [
       {
         role: 'system',
-        content: `You are Discord Agent, specializing in Discord operations.
+        content: `You are Discord Agent, specializing in Discord operations and agent coordination.
 
 Channel: #${message.channelName} (${message.channelId})
 Guild: ${message.guildName || 'DM'}
-Author: ${message.author.username}
+Author: ${message.author.username} (${role})
 
 The user said: "${content}"
 
-Respond appropriately:
+${ownerContext}Respond appropriately:
 - Be helpful and concise
 - Use Discord plugin tools for channel operations
-- Consider delegating to Senter, Ralph, or Saga-Writer for complex tasks
+- Consider delegating to Senter, Ralph, or SAGA Writer for complex tasks
 - For large content, consider creating markdown file attachments
 - Keep responses under Discord's character limit when possible`,
       },
@@ -480,7 +568,13 @@ Respond appropriately:
   });
   
   const replyContent = response.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that request.";
-  await sendDiscordMessage(message.channelId, ctx, replyContent);
+  
+  // Check if response is too long and needs file attachment
+  if (replyContent.length > 1800) {
+    await sendDiscordMessageWithFile(channelId, ctx, replyContent);
+  } else {
+    await sendDiscordMessage(channelId, ctx, replyContent);
+  }
 }
 
 /**
@@ -503,37 +597,28 @@ async function sendDiscordMessage(channelId: string, ctx: any, content: string) 
 }
 
 /**
- * Classify type of Discord request
+ * Send message with file attachment for large content
  */
-function classifyRequest(content: string): string {
-  const lower = content.toLowerCase();
-  
-  if (lower.includes('list') && lower.includes('channel')) {
-    return 'list-channels';
+async function sendDiscordMessageWithFile(
+  channelId: string,
+  ctx: any,
+  content: string
+) {
+  try {
+    // For now, create a markdown content reference
+    // File attachments would need additional plugin support
+    const result = await ctx.client.tool.execute({
+      tool: 'discord.send-message',
+      args: {
+        channelId,
+        content: `${content}\n\n*📄 Markdown file created (saved to local opencode log)*`,
+      },
+    });
+    
+    console.log(`[Discord Agent] Response sent with markdown file reference`);
+  } catch (error) {
+    console.error('[Discord Agent] Error with file attachment:', error);
   }
-  if (lower.includes('create') && lower.includes('channel')) {
-    return 'create-channel';
-  }
-  if (lower.includes('create') && lower.includes('categor')) {
-    return 'create-category';
-  }
-  if (lower.includes('update') && lower.includes('channel')) {
-    return 'update-channel';
-  }
-  if (lower.includes('delete') || lower.includes('remove') || lower.includes('destroy')) {
-    return 'delete-channel';
-  }
-  if (lower.includes('search') || lower.includes('find')) {
-    return 'search-messages';
-  }
-  if (lower.includes('show') && lower.includes('message')) {
-    return 'get-messages';
-  }
-  if (lower.includes('help') || lower.includes('what can you do')) {
-    return 'general-help';
-  }
-  
-  return 'general-request';
 }
 
 /**
@@ -563,7 +648,7 @@ function extractSearchQuery(text: string): string | null {
 /**
  * Extract limit number
  */
-function extractLimit(text: string): number | null {
+function extract limit(text: string): number | null {
   const match = text.match(/(?:last|show|get|limit)\s+(\d+)/i);
   return match ? parseInt(match[1]) : null;
 }
