@@ -9,9 +9,11 @@ Transform rough ideas into working applications in 3-5 hours instead of weeks or
 ## 🎯 What's Included
 
 ### [Agents](./agents/README.md)
-AI agents for requirements gathering and autonomous development:
+AI agents for requirements gathering, code review, and autonomous development:
 - **SAGA-Writer** - Creates complete, validated SAGA plans directly in PROMPT.md
 - **Ralph** - Executes autonomous development loop with SAGA and Cartographer
+- **Code Reviewer** - Performs comprehensive code reviews with automated testing
+- **Terminal Tester** - Executes scripts and commands in terminals, captures output
 
 ### [Scripts](./scripts/README.md)
 Supporting tools and automation scripts:
@@ -27,6 +29,9 @@ OpenCode plugins for extended functionality:
 ### [Skills](./skills/README.md)
 OpenCode and Senter skills for extended functionality:
 - **Terminal Launcher** - Open and monitor terminal sessions in real-time
+- **SAGA Automation** - Automate SAGA workflow with testing and code review
+- **Code Reviewer** - Automated code reviews with LLM-friendly prompts
+- **Terminal Tester** - Terminal execution and testing
 
 ---
 
@@ -61,7 +66,9 @@ chmod +x install.sh
 ai-sandbox/
 ├── agents/              # AI agent configurations
 │   ├── saga-writer.md  # SAGA-Writer agent
-│   └── ralph.md         # Ralph agent
+│   ├── ralph.md         # Ralph agent
+│   ├── code-reviewer.md # Code Reviewer agent
+│   └── terminal-tester.md # Terminal Tester agent
 ├── scripts/             # Automation and utility scripts
 │   ├── cartographer.py   # Architecture mapper
 │   ├── SAGA_PROTOCOL.md # Planning template
@@ -70,7 +77,10 @@ ai-sandbox/
 │   ├── terminal-tools/   # Terminal management tools
 │   └── install-*.sh     # Installation scripts
 ├── skills/              # OpenCode and Senter skills
-│   └── terminal-launcher.md # Terminal session management
+│   ├── terminal-launcher.md # Terminal session management
+│   ├── saga-automation.md # SAGA workflow automation
+│   ├── code-reviewer.md # Automated code reviews
+│   └── terminal-tester.md # Terminal execution and testing
 ├── plugins/             # OpenCode plugins
 │   └── discord-plugin/  # Discord integration
 │       ├── src/         # TypeScript source
@@ -83,6 +93,14 @@ ai-sandbox/
 ---
 
 ## 🎓 Version History
+
+### v3.0 (January 17, 2026)
+- ✨ Added Code Reviewer agent for automated code reviews
+- ✨ Added Terminal Tester agent for script execution
+- ✨ Added SAGA Automation skill for workflow automation
+- 🔧 Integration between Code Reviewer and Terminal Tester
+- 📝 Code reviews now generate LLM-friendly prompts
+- 🧪 Automated testing in SAGA workflow
 
 ### v2.1 (January 17, 2026)
 - ✨ Added Terminal Launcher skill for real-time terminal monitoring
