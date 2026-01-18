@@ -135,8 +135,4 @@ MIT License
 
 ---
 
-**Transform ideas into reality with autonomous AI development!**
-
-From rough idea to working application in hours, not weeks.
-
 **Built for:** OpenCode | Senter | Claude Code | Cursor
